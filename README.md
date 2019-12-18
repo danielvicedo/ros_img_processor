@@ -16,4 +16,13 @@ Repository forked from :https://github.com/beta-robots/ros_img_processor
 
 The objective of this exercise was to use the previously done Circle Detector code and add it to this project in order to show the unitary vector of a detected circle.
 For that, a 3x1 vector has been created where values x and y of the center of the detected circle have been included. Following that, a multiplication between the inverse of the matrixK (which is a 3x3 matrix) and this vector has been made.
-The result of this multiplication shows the direction of the vector between the center of the image and the center of the detected circle. 
+The result of this multiplication shows the direction of the vector between the center of the image and the center of the detected circle.
+
+**Circle Detector**
+
+![ScreenShot]("https://github.com/danielvicedo/ros_img_processor/blob/master/media/Circle%20Detector.png")
+
+
+**Rviz Direction**
+
+![ScreenShot]("https://github.com/danielvicedo/ros_img_processor/blob/master/media/Vector%20rviz.png")
