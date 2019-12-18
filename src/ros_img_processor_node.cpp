@@ -1,4 +1,22 @@
 #include "ros_img_processor_node.h"
+#include "opencv2/opencv.hpp"
+#include "opencv2/core.hpp"
+#include "opencv2/imgproc.hpp"
+
+//std
+#include <iostream>
+#include <cstdlib>
+#include <vector>
+
+//constants
+const int GAUSSIAN_BLUR_SIZE = 7;
+const double GAUSSIAN_BLUR_SIGMA = 2;
+const double CANNY_EDGE_TH = 150;
+const double HOUGH_ACCUM_RESOLUTION = 2;
+const double MIN_CIRCLE_DIST = 40;
+const double HOUGH_ACCUM_TH = 70;
+const int MIN_RADIUS = 40;
+const int MAX_RADIUS = 70;
 
 RosImgProcessorNode::RosImgProcessorNode() :
     nh_(ros::this_node::getName()),
@@ -23,7 +41,11 @@ RosImgProcessorNode::~RosImgProcessorNode()
 
 void RosImgProcessorNode::process()
 {
-    cv::Rect_<int> box;
+
+    cv::Mat gray_image;
+    std::vector<cv::Vec3f> circles;
+    cv::Point center;
+    int radius;
 
     //check if new image is there
     if ( cv_img_ptr_in_ != nullptr )
@@ -32,19 +54,42 @@ void RosImgProcessorNode::process()
         cv_img_out_.image = cv_img_ptr_in_->image;
 
 		// find the ball
-		//TODO
+    //**************** Find circles in the image ****************************
 
-		// find the direction vector
-		//TODO
-		direction_ << 1,1,2.5;  // just to draw something with the arrow marker
+        //clear previous circles
+        circles.clear();
 
-        // draw a bounding box around the ball
-        box.x = (cv_img_ptr_in_->image.cols/2)-10;
-        box.y = (cv_img_ptr_in_->image.rows/2)-10;
-        box.width = 20;
-        box.height = 20;
-        cv::rectangle(cv_img_out_.image, box, cv::Scalar(0,255,255), 3);
-    }
+        // If input image is RGB, convert it to gray
+        cv::cvtColor(cv_img_out_.image, gray_image, CV_BGR2GRAY);
+
+        //Reduce the noise so we avoid false circle detection
+        cv::GaussianBlur( gray_image, gray_image, cv::Size(GAUSSIAN_BLUR_SIZE, GAUSSIAN_BLUR_SIZE), GAUSSIAN_BLUR_SIGMA );
+
+        //Apply the Hough Transform to find the circles
+        cv::HoughCircles( gray_image, circles, CV_HOUGH_GRADIENT, HOUGH_ACCUM_RESOLUTION, MIN_CIRCLE_DIST, CANNY_EDGE_TH, HOUGH_ACCUM_TH, MIN_RADIUS, MAX_RADIUS );
+
+        //draw circles on the image
+        for(unsigned int ii = 0; ii < circles.size(); ii++ )
+        {
+            if ( circles[ii][0] != -1 )
+            {
+                    center = cv::Point(cvRound(circles[ii][0]), cvRound(circles[ii][1]));
+                    radius = cvRound(circles[ii][2]);
+                    cv::circle(cv_img_out_.image, center, 5, cv::Scalar(0,0,255), -1, 8, 0 );// circle center in green
+                    cv::circle(cv_img_out_.image, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );// circle perimeter in red
+            }
+        }
+
+    //********************************************************************
+
+
+    Eigen::Vector3d Point;
+    Point[0] = center.x;
+    Point[1] = center.y;
+    Point[2] = 1;
+		direction_ << matrixK_.inverse() * Point;
+
+      }
 
     //reset input image
     cv_img_ptr_in_ = nullptr;
